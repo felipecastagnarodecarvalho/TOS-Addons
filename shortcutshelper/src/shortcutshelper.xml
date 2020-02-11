@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uiframe name="shortcutshelper" x="0" y="0" width="210" height="150" version="2">
+  <frame layout_gravity="right top" margin="0 340 400 0"/>
+  <input moveable="false" moveintitlebar="false" hittestframe="true" resize="false"/>
+  <draw drawframe="false" drawtitlebar="false"/>
+  <layer layerlevel="31"/>
+  <option visible="true" alwaysVisible="true" closebutton="false"/>
+  <controls>
+    <button name="marketButton" rect="0 0 160 60" margin="0 0 0 0" layout_gravity="center center" hittest="true" LBtnUpScp="ShortcutsHelper_MARKET_BTN_CLICK" caption="{img market_plus_btn 29 28}{@st66b}{s16}Market{/}" stretch="true" skin="test_pvp_btn" texttooltip="Opens the Market UI" MouseOnAnim="btn_mouseover" MouseOffAnim="btn_mouseoff" oversound="button_cursor_over_2" clicksound="button_click_3"/>
+    <button name="personalWarehouseButton" rect="0 0 160 60" margin="0 -30 0 0" layout_gravity="center center" hittest="true" LBtnUpScp="ShortcutsHelper_PERSONAL_WAREHOUSE_BTN_CLICK" caption="{img market_plus_btn 29 28}{@st66b}{s16}Warehouse{/}" stretch="true" skin="test_pvp_btn" texttooltip="Opens the Warehouse UI" MouseOnAnim="btn_mouseover" MouseOffAnim="btn_mouseoff" oversound="button_cursor_over_2" clicksound="button_click_3"/>
+    <button name="accountWarehouseButton" rect="0 0 160 60" margin="0 30 0 0" layout_gravity="center center" hittest="true" LBtnUpScp="ShortcutsHelper_ACCOUNT_WAREHOUSE_BTN_CLICK" caption="{img market_plus_btn 29 28}{@st66b}{s16}AccWarehouse{/}" stretch="true" skin="test_pvp_btn" texttooltip="Opens the Account Warehouse UI" MouseOnAnim="btn_mouseover" MouseOffAnim="btn_mouseoff" oversound="button_cursor_over_2" clicksound="button_click_3"/>  </controls>
+</uiframe>

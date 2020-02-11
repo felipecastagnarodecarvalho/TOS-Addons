@@ -1,0 +1,19 @@
+[
+	{
+		"tosversion" : "20200211",
+		"name" : "Shortcuts Helper",
+		"file" : "shortcutshelper",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "v1.0.0",
+		"unicode" : "😶",
+		"description" : "This addons tries to help you to open certain interfaces without needing to talk to the npc, keep in mind that you will need to be near the desired NPC.",
+		"tags" : [
+			"market",
+			"warehouse",
+			"storage",
+			"helper",
+			"shortcut"
+		]
+	}
+]
