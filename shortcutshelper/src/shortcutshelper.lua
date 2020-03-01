@@ -166,7 +166,8 @@ function ShortcutsHelper_PERSONAL_WAREHOUSE_BTN_CLICK()
 		return;
 	end
 
-    local frame = ui.GetFrame('warehouse');	
+	local framename = 'warehouse';
+    local frame = ui.GetFrame(framename);	
     ui.OpenFrame(framename);
     WAREHOUSE_OPEN(frame);	
 end
