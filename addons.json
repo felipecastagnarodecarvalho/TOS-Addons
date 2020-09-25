@@ -15,5 +15,20 @@
 			"helper",
 			"shortcut"
 		]
+	},
+		{
+		"tosversion" : "20200924",
+		"name" : "Quick Quest",
+		"file" : "quickquest",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "v1.0.0",
+		"unicode" : "😺",
+		"description" : "Skips most of dialogs, retrieve quest rewards and accept quests automatically when the dialog is open.",
+		"tags" : [
+			"quest",
+			"skip",
+			"helper"
+		]
 	}
 ]
