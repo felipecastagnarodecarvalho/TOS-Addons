@@ -21,10 +21,10 @@
 		"name" : "Quick Quest",
 		"file" : "quickquest",
 		"extension" : "ipf",
-		"fileVersion" : "v1.0.0",
+		"fileVersion" : "v1.1.0",
 		"releaseTag" : "v1.2.0",
 		"unicode" : "😺",
-		"description" : "Skips most of dialogs, retrieve quest rewards and accept quests automatically when the dialog is open.",
+		"description" : "Skips most of dialogs, speeds up your in game questing routine.",
 		"tags" : [
 			"quest",
 			"skip",

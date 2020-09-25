@@ -6,7 +6,7 @@ local author = 'TheReturn'
 local authorUpper = string.upper(author);
 local authorLower = string.lower(author);
 
-local version = '1.0.0';
+local version = '1.1.0';
 
 _G['ADDONS'] = _G['ADDONS'] or {}
 _G['ADDONS'][authorUpper] = _G['ADDONS'][authorUpper] or {}
@@ -16,82 +16,46 @@ local QuickQuest = _G['ADDONS'][authorUpper][addonNameUpper];
 local ACUtil = require('acutil');
 local CharbonAPI = require('charbonapi');
 
--- local Settings = {};
-
 QuickQuest.SettingsFileLoc = string.format('../addons/%s/settings.json', addonNameLower);
 
 QuickQuest.DefaultSettings = {}
-QuickQuest.DefaultSettings.AutoLoadEnabled = false;
-QuickQuest.AddonEnabled = false;
+QuickQuest.DefaultSettings.AddonEnabled = false;
 
 local chatQuickQuestTextColor = '7733ff';
-
-function QuickQuest.LoadSettings(self)
-
-  local settings, err = ACUtil.loadJSON(self.SettingsFileLoc, nil, true);
-
-  if err then
-	session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] Could not load QuickQuest Settings ', true, 'System', chatQuickQuestTextColor);
-  end
-
-  if not settings then
-    settings = self.DefaultSettings;
-  end
-
-  self.Settings = settings;
-end
-
-function QuickQuest.SaveSettings(self)
-  return ACUtil.saveJSON(self.SettingsFileLoc, self.Settings);
-end
 
 function QUICKQUEST_ON_INIT(addon, frame)
     		
 	QuickQuest.Frame = frame
 	QuickQuest.Addon = addon;
 
-	QuickQuest:LoadSettings();
+    ACUtil.slashCommand('/quickquest', QUICKQUEST_ENABLE_OR_DISABLE);
+	ACUtil.slashCommand('/qq', QUICKQUEST_ENABLE_OR_DISABLE);
 
-    ACUtil.slashCommand('/quickquest', QUICKQUEST_START);
-	ACUtil.slashCommand('/qq', QUICKQUEST_START);
-
-	ACUtil.slashCommand('/autoquickquest', QUICKQUEST_AUTO_START);
-	ACUtil.slashCommand('/aqq', QUICKQUEST_AUTO_START);
+	if not QuickQuest.Loaded then	
+		QuickQuest:LoadSettings()
+		QuickQuest:SaveSettings()		
+		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] /quickquest or /qq to enable or disable quick quest addon.', true, 'System', chatQuickQuestTextColor);
+			
+		QuickQuest.Loaded = true
+	end
 	
-	session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] /quickquest or /qq to enable or disable quick quest addon.', true, 'System', chatQuickQuestTextColor);
-	session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] /autoquickquest or /aqq to auto enable quick quest addon.', true, 'System', chatQuickQuestTextColor);
-	
-	if QuickQuest:IsAutoLoadEnabled() == true then
+	if QuickQuest:IsAddonEnabled() == true then
 		QUICKQUEST_START();
 	end
 end
 
-function QUICKQUEST_START()
-	QuickQuest:SetupAddon();
+function QUICKQUEST_ENABLE_OR_DISABLE()
+	QuickQuest:EnableOrDisableAddon();
 end
 
 function QUICKQUEST_CLOSE_REWARD_FROM_QUEST()
 	local frame = ui.GetFrame('questreward');
 	frame:ShowWindow(0);
 	
-	control.DialogItemSelect(0);
+	control.DialogItemSelect(1);
 	
 	frame = frame:GetTopParentFrame();
 	frame:ShowWindow(0);
-end
-
-function QUICKQUEST_AUTO_START()
-	QuickQuest:ChangeAutoQuickQuickSetting();
-	
-	if QuickQuest:IsAutoLoadEnabled() == true then
-		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] auto enable quick quest addon is ON', true, 'System', chatQuickQuestTextColor);
-	else
-		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] auto enable quick quest addon is OFF', true, 'System', chatQuickQuestTextColor);
-	end
-	
-	if QuickQuest.AddonEnabled == false then
-		QuickQuest:SetupAddon();
-	end
 end
 
 function MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED(box, cls, y)
@@ -138,8 +102,60 @@ function MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED(box, cls, y)
 		cancelBtn:ShowWindow(1);
 		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
         useBtn:SetOffset(-85, 40);
-        control.DialogItemSelect(100);
-		ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.2);
+        control.DialogItemSelect(1);
+		ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.15);
+	end
+
+	return y;
+end
+
+function MAKE_BASIC_REWARD_ITEM_CTRL_DEFAULT(box, cls, y)
+
+    local MySession		= session.GetMyHandle();
+	local MyJobNum		= info.GetJob(MySession);
+	local JobName		= GetClassString('Job', MyJobNum, 'ClassName');
+	local index = 0
+	local job = SCR_JOBNAME_MATCHING(JobName)
+	local pc = GetMyPCObject();
+
+	local isItem = 0;
+	if cls.Success_ItemName1 ~= "None" or cls.Success_JobItem_Name1 ~= "None" then
+		for i = 1 , MAX_QUEST_TAKEITEM do
+			local propName = "Success_ItemName" .. i;
+			if cls[propName] ~= "None" and cls[propName] ~= "Vis" then
+				y = MAKE_ITEM_TAG_TEXT_CTRL(y, box, "reward_item", cls[propName], cls["Success_ItemCount" .. i], i);
+				index = index + 1
+				isItem = 1;
+			end
+		end
+
+        for i = 1, 20 do
+            if cls['Success_JobItem_Name'..i] ~= 'None' and cls['Success_JobItem_JobList'..i] ~= 'None' then
+                local jobList = SCR_STRING_CUT(cls['Success_JobItem_JobList'..i])
+                if SCR_Q_SUCCESS_REWARD_JOB_GENDER_CHECK(pc, jobList, job, pc.Gender, cls.Success_ChangeJob) == 'YES' then
+                    local propName = 'Success_JobItem_Name'..i
+
+                    y = MAKE_ITEM_TAG_TEXT_CTRL(y, box, "reward_item", cls[propName], cls["Success_JobItem_Count" .. i], index + i);
+        			isItem = 1;
+                end
+            end
+        end
+	end
+
+	local frame 	= ui.GetFrame('questreward');
+	local cancelBtn = frame:GetChild('CancelBtn');
+	local useBtn = frame:GetChild('UseBtn');
+
+	if isItem == 0 then
+		cancelBtn:ShowWindow(0);
+		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
+        useBtn:SetOffset(0, 40);
+
+	else
+		cancelBtn:ShowWindow(1);
+		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
+        useBtn:SetOffset(-85, 40);
+        CONFIRM_QUEST_REWARD(frame);
 	end
 
 	return y;
@@ -154,26 +170,26 @@ function DIALOG_ON_MSG_HOOKED(frame, msg, argStr, argNum)
 	end
 
     ui.ShowChatFrames(0);
-
+		
 	if  msg == 'DIALOG_CHANGE_OK'  then
 		DIALOG_TEXTVIEW(frame, msg, argStr, argNum);		
 		frame:ShowWindow(1);
 		frame:SetUserValue("DialogType", 1);
-		ReserveScript('QUICKQUEST_SELECT_FIRST_DIALOG()', 0.05);
+		ReserveScript('QUICKQUEST_SELECT_DIALOG_HOOKED()', 0.05);
 	end
 
 	if  msg == 'DIALOG_CHANGE_NEXT'  then
 		DIALOG_TEXTVIEW(frame, msg, argStr, argNum);
 		frame:ShowWindow(1);
-		frame:SetUserValue("DialogType", 1);
-		ReserveScript('QUICKQUEST_SELECT_FIRST_DIALOG()', 0.05);
+		frame:SetUserValue("DialogType", 1);		
+		ReserveScript('QUICKQUEST_SELECT_DIALOG_HOOKED()', 0.05);
 	end
 
     if  msg == 'DIALOG_CHANGE_SELECT'  then
 		DIALOG_TEXTVIEW(frame, msg, argStr, argNum);
 		frame:ShowWindow(1);
 		frame:SetUserValue("DialogType", 2);		
-		ReserveScript('QUICKQUEST_SELECT_FIRST_DIALOG()', 0.05);
+		ReserveScript('QUICKQUEST_SELECT_DIALOG_HOOKED()', 0.05);
     end
 
 	if  msg == 'DIALOG_CLOSE'  then
@@ -295,6 +311,8 @@ function DIALOGSELECT_ON_MSG_HOOKED(frame, msg, argStr, argNum)
     		questreward:ShowWindow(0)
     	end
 	elseif  msg == 'DIALOG_ADD_SELECT'  then
+		DialogSelect_index = 1;
+				
 		DialogSelect_Type = 0;
 		DIALOGSELECT_ITEM_ADD(frame, msg, argStr, argNum);
 
@@ -302,15 +320,17 @@ function DIALOGSELECT_ON_MSG_HOOKED(frame, msg, argStr, argNum)
 		if questRewardBox ~= nil then
 			argNum = argNum - 1;
 		end
+		
 		DialogSelect_count = argNum;
 
 		local ItemBtn = frame:GetChild('item1Btn');
 		local itemWidth = ItemBtn:GetWidth()
 		local x, y = GET_SCREEN_XY(ItemBtn,itemWidth/2.5);
-
-		DialogSelect_index = 1;
-
-		-- mouse.SetPos(x,y);
+	
+		-- if session.config.IsMouseMode() == false then
+			mouse.SetPos(x,y);
+		-- end
+		
 		mouse.SetHidable(0);
 
 	elseif  msg == 'DIALOG_CLOSE'  then
@@ -475,7 +495,7 @@ function DIALOGSELECT_ITEM_ADD_HOOKED(frame, msg, argStr, argNum)
 		questRewardBox:SetGravity(ui.CENTER_HORZ, ui.TOP);		
 		questRewardBox:SetOffset(0, 50);
 		
-		control.DialogSelect(1);
+		control.DialogSelect(argNum);
 
 		if frame:GetUserIValue("FIRSTORDER_MAXHEIGHT") == 1 then			
 			if (y + (maxHeight - frame:GetY())) > (maxHeight) then	
@@ -596,23 +616,57 @@ function DIALOGSELECT_ITEM_ADD_DEFAULT(frame, msg, argStr, argNum)
 	frame:Update();
 end
 
-function QUICKQUEST_SELECT_FIRST_DIALOG()
-
+function QUICKQUEST_SELECT_DIALOG_HOOKED()
     local frame = ui.GetFrame('dialog');
-    DIALOG_ON_SKIP(frame);
+	
+	local textObj = GET_CHILD(frame, "textlist", "ui::CFlowText");
 
-    if frame:IsVisible() == 1 then
-        ReserveScript('QUICKQUEST_SELECT_FIRST_DIALOG()', 0.05);
-    end
+	local dialog_NewOpen = frame:GetUserIValue("DialogNewOpen");
+
+	if dialog_NewOpen == 0 then
+		if frame:IsVisible() == 1 then	
+			if textObj:IsFlowed() == 1 and textObj:IsNextPage() == 1 then
+				textObj:SetNextPage(0);
+				ReserveScript('QUICKQUEST_SELECT_DIALOG_HOOKED()', 0.05);
+			elseif textObj:IsFlowed() == 1 and textObj:IsNextPage() == 0 then
+				textObj:SetNextPage(1);
+				textObj:SetFlowSpeed(35);
+				DIALOG_TEXT_VOICE(textObj);
+				ReserveScript('QUICKQUEST_SELECT_DIALOG_HOOKED()', 0.05);				
+			else
+				local dialogType = frame:GetUserIValue("DialogType");
+				
+				if dialogType == 1 then
+					frame:Invalidate();
+					DIALOG_SEND_OK(frame);
+				elseif dialogType == 2 then
+					session.SetSelectDlgList();
+					ui.OpenFrame('dialogselect');
+				end
+			end
+		end
+	else
+		local illustFrame = ui.GetFrame('dialogillust');
+
+		frame:Invalidate();
+		frame:ShowWindow(0);
+		illustFrame:ShowWindow(0);
+
+		local dialog_NewOpenDuration = frame:GetUserValue("DialogNewOpenDuration");
+		if dialog_NewOpenDuration == "None" then
+			dialog_NewOpenDuration = 0;
+		else
+			dialog_NewOpenDuration = tonumber(dialog_NewOpenDuration);
+		end
+
+		frame:SetOpenDuration(dialog_NewOpenDuration);
+		illustFrame:SetOpenDuration(dialog_NewOpenDuration);
+	end
 end
 
-function QuickQuest.SetupAddon(self)
-	
-	if self:IsAutoLoadEnabled() == true then
-		self.AddonEnabled = true;
-	end
-	
-	if self.AddonEnabled == false then
+function QuickQuest.EnableOrDisableAddon(self)
+		
+	if self:IsAddonEnabled() == false then
 	
 		ACUtil.setupHook(DIALOGSELECT_ON_MSG_HOOKED,'DIALOGSELECT_ON_MSG');
 		ACUtil.setupHook(DIALOG_ON_MSG_HOOKED,'DIALOG_ON_MSG');
@@ -620,8 +674,6 @@ function QuickQuest.SetupAddon(self)
 		ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_HOOKED,'DIALOGSELECT_ITEM_ADD');	
 		
 		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] This addon has been enabled.', true, 'System', chatQuickQuestTextColor);
-					
-		self.AddonEnabled = true;
 	else
 		ACUtil.setupHook(DIALOGSELECT_ON_MSG_DEFAULT,'DIALOGSELECT_ON_MSG');
 		ACUtil.setupHook(DIALOG_ON_MSG_DEFAULT,'DIALOG_ON_MSG');
@@ -629,16 +681,35 @@ function QuickQuest.SetupAddon(self)
 		ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_DEFAULT,'DIALOGSELECT_ITEM_ADD');
 		
 		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] This addon has been disabled.', true, 'System', chatQuickQuestTextColor);
-		
-		self.AddonEnabled = false;
 	end
+	
+	self:ChangeAddonEnableSettingsStatus();
 end
 
-function QuickQuest.IsAutoLoadEnabled(self)
-  return self.Settings.AutoLoadEnabled;
+function QuickQuest.IsAddonEnabled(self)
+  return self.Settings.AddonEnabled;
 end
 
-function QuickQuest.ChangeAutoQuickQuickSetting(self)
-  self.Settings.AutoLoadEnabled = not self.Settings.AutoLoadEnabled;
+function QuickQuest.ChangeAddonEnableSettingsStatus(self)
+  self.Settings.AddonEnabled = not self.Settings.AddonEnabled;
   self:SaveSettings()
+end
+
+function QuickQuest.LoadSettings(self)
+
+  local settings, err = ACUtil.loadJSON(self.SettingsFileLoc, nil, true);
+
+  if err then
+	session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] Could not load QuickQuest Settings ', true, 'System', chatQuickQuestTextColor);
+  end
+
+  if not settings then
+    settings = self.DefaultSettings;
+  end
+
+  self.Settings = settings;
+end
+
+function QuickQuest.SaveSettings(self)
+  return ACUtil.saveJSON(self.SettingsFileLoc, self.Settings);
 end
