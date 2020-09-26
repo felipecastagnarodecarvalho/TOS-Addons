@@ -30,7 +30,20 @@ function QUICKQUEST_ON_INIT(addon, frame)
 
     ACUtil.slashCommand('/quickquest', QUICKQUEST_ENABLE_OR_DISABLE);
 	ACUtil.slashCommand('/qq', QUICKQUEST_ENABLE_OR_DISABLE);
+	
+	QUICKQUEST_LOAD_SETTINGS();
 
+	if QuickQuest:IsAddonEnabled() == true then
+		QuickQuest:SetupEnabledHooks();
+	end
+end
+
+function QUICKQUEST_ENABLE_OR_DISABLE()
+	QUICKQUEST_LOAD_SETTINGS();
+	QuickQuest:EnableOrDisableAddon();
+end
+
+function QUICKQUEST_LOAD_SETTINGS()
 	if not QuickQuest.Loaded then	
 		QuickQuest:LoadSettings()
 		QuickQuest:SaveSettings()		
@@ -45,13 +58,6 @@ function QUICKQUEST_ON_INIT(addon, frame)
 		QuickQuest.Loaded = true
 	end
 	
-	if QuickQuest:IsAddonEnabled() == true then
-		QuickQuest:SetupEnabledHooks();
-	end
-end
-
-function QUICKQUEST_ENABLE_OR_DISABLE()
-	QuickQuest:EnableOrDisableAddon();
 end
 
 function MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED(box, cls, y)
@@ -173,7 +179,6 @@ function MAKE_SELECT_REWARD_CTRL_HOOKED(box, y, questCls, callFunc)
     local repeat_reward_select = false
     local repeat_reward_select_use = false
         
-    
     repeat_reward_item, repeat_reward_achieve, repeat_reward_achieve_point, repeat_reward_exp, repeat_reward_npc_point, repeat_reward_select, repeat_reward_select_use  = SCR_REPEAT_REWARD_CHECK(pc, questIES, questCls, sObj)
     if repeat_reward_select == false or (repeat_reward_select == true and repeat_reward_select_use == true) then
         if callFunc == 'DIALOGSELECT_QUEST_REWARD_ADD' then
@@ -756,7 +761,7 @@ function QuickQuest.EnableOrDisableAddon(self)
 		
 	if self:IsAddonEnabled() == false then	
 		self:SetupEnabledHooks();
-		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] This addon has been enabled.', true, 'System', chatQuickQuestTextColor);
+		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] The addon has been enabled.', true, 'System', chatQuickQuestTextColor);
 	elseif self:IsAddonEnabled() == true then
 		ACUtil.setupHook(DIALOGSELECT_ON_MSG_DEFAULT,'DIALOGSELECT_ON_MSG');
 		ACUtil.setupHook(DIALOG_ON_MSG_DEFAULT,'DIALOG_ON_MSG');
@@ -764,7 +769,7 @@ function QuickQuest.EnableOrDisableAddon(self)
 		ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_DEFAULT,'DIALOGSELECT_ITEM_ADD');
 		ACUtil.setupHook(MAKE_SELECT_REWARD_CTRL_DEFAULT,'MAKE_SELECT_REWARD_CTRL');
 		
-		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] This addon has been disabled.', true, 'System', chatQuickQuestTextColor);
+		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] The addon has been disabled.', true, 'System', chatQuickQuestTextColor);
 	end
 	
 	self:ChangeAddonEnableSettingsStatus();
