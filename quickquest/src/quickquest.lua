@@ -35,27 +35,23 @@ function QUICKQUEST_ON_INIT(addon, frame)
 		QuickQuest:LoadSettings()
 		QuickQuest:SaveSettings()		
 		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] /quickquest or /qq to enable or disable quick quest addon.', true, 'System', chatQuickQuestTextColor);
-			
+		
+		if QuickQuest:IsAddonEnabled() == true then
+			session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] The QuickQuest addon is ENABLED.', true, 'System', chatQuickQuestTextColor);
+		else
+			session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] The QuickQuest addon is DISABLED.', true, 'System', chatQuickQuestTextColor);
+		end
+		
 		QuickQuest.Loaded = true
 	end
 	
 	if QuickQuest:IsAddonEnabled() == true then
-		QUICKQUEST_START();
+		QuickQuest:SetupEnabledHooks();
 	end
 end
 
 function QUICKQUEST_ENABLE_OR_DISABLE()
 	QuickQuest:EnableOrDisableAddon();
-end
-
-function QUICKQUEST_CLOSE_REWARD_FROM_QUEST()
-	local frame = ui.GetFrame('questreward');
-	frame:ShowWindow(0);
-	
-	control.DialogItemSelect(1);
-	
-	frame = frame:GetTopParentFrame();
-	frame:ShowWindow(0);
 end
 
 function MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED(box, cls, y)
@@ -102,7 +98,7 @@ function MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED(box, cls, y)
 		cancelBtn:ShowWindow(1);
 		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
         useBtn:SetOffset(-85, 40);
-        control.DialogItemSelect(1);
+		control.DialogItemSelect(100);
 		ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.15);
 	end
 
@@ -150,7 +146,6 @@ function MAKE_BASIC_REWARD_ITEM_CTRL_DEFAULT(box, cls, y)
 		cancelBtn:ShowWindow(0);
 		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
         useBtn:SetOffset(0, 40);
-
 	else
 		cancelBtn:ShowWindow(1);
 		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
@@ -159,6 +154,91 @@ function MAKE_BASIC_REWARD_ITEM_CTRL_DEFAULT(box, cls, y)
 	end
 
 	return y;
+end
+
+function MAKE_SELECT_REWARD_CTRL_HOOKED(box, y, questCls, callFunc)
+    if questCls.Success_SelectItemName1 == "None" then
+		return y;
+	end
+	
+    local questIES = GetClassByType("QuestProgressCheck", questCls.ClassID);
+    local pc = GetMyPCObject();
+    local sObj = GetSessionObject(pc, 'ssn_klapeda')
+    
+    local repeat_reward_item = {}
+    local repeat_reward_achieve = {}
+    local repeat_reward_achieve_point = {}
+    local repeat_reward_exp = 0;
+    local repeat_reward_npc_point = 0
+    local repeat_reward_select = false
+    local repeat_reward_select_use = false
+        
+    
+    repeat_reward_item, repeat_reward_achieve, repeat_reward_achieve_point, repeat_reward_exp, repeat_reward_npc_point, repeat_reward_select, repeat_reward_select_use  = SCR_REPEAT_REWARD_CHECK(pc, questIES, questCls, sObj)
+    if repeat_reward_select == false or (repeat_reward_select == true and repeat_reward_select_use == true) then
+        if callFunc == 'DIALOGSELECT_QUEST_REWARD_ADD' then
+            y = BOX_CREATE_RICHTEXT(box, "t_selreward", y, 20, ScpArgMsg("Auto_{@st54}BoSang_SeonTaeg"));
+        else
+        	y = BOX_CREATE_RICHTEXT(box, "t_selreward", y, 20, ScpArgMsg("Auto_{@st41}BoSang_SeonTaeg"));
+        end
+    
+    	for i = 1, MAX_QUEST_SELECTITEM do
+    		local propName = "Success_SelectItemName" .. i;
+    		local itemName = questCls[propName];
+    		if itemName == "None" then
+    			break;
+    		end
+    
+    		local itemCnt = questCls[ "Success_SelectItemCount" .. i];
+    		y = CREATE_QUEST_REWARE_CTRL(box, y, i, itemName, itemCnt, callFunc);
+    	end
+					
+		ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.15);
+    end
+
+	return y;
+end
+
+function MAKE_SELECT_REWARD_CTRL_DEFAULT(box, y, questCls, callFunc)
+    if questCls.Success_SelectItemName1 == "None" then
+		return y;
+	end
+	
+    local questIES = GetClassByType("QuestProgressCheck", questCls.ClassID);
+    local pc = GetMyPCObject();
+    local sObj = GetSessionObject(pc, 'ssn_klapeda')
+    
+    local repeat_reward_item = {}
+    local repeat_reward_achieve = {}
+    local repeat_reward_achieve_point = {}
+    local repeat_reward_exp = 0;
+    local repeat_reward_npc_point = 0
+    local repeat_reward_select = false
+    local repeat_reward_select_use = false
+        
+    
+    repeat_reward_item, repeat_reward_achieve, repeat_reward_achieve_point, repeat_reward_exp, repeat_reward_npc_point, repeat_reward_select, repeat_reward_select_use  = SCR_REPEAT_REWARD_CHECK(pc, questIES, questCls, sObj)
+    if repeat_reward_select == false or (repeat_reward_select == true and repeat_reward_select_use == true) then
+        if callFunc == 'DIALOGSELECT_QUEST_REWARD_ADD' then
+            y = BOX_CREATE_RICHTEXT(box, "t_selreward", y, 20, ScpArgMsg("Auto_{@st54}BoSang_SeonTaeg"));
+        else
+        	y = BOX_CREATE_RICHTEXT(box, "t_selreward", y, 20, ScpArgMsg("Auto_{@st41}BoSang_SeonTaeg"));
+        end
+    
+    	for i = 1, MAX_QUEST_SELECTITEM do
+    		local propName = "Success_SelectItemName" .. i;
+    		local itemName = questCls[propName];
+    		if itemName == "None" then
+    			break;
+    		end
+    
+    		local itemCnt = questCls[ "Success_SelectItemCount" .. i];
+    		y = CREATE_QUEST_REWARE_CTRL(box, y, i, itemName, itemCnt, callFunc);
+    	end
+    end
+
+	return y;
+
 end
 
 function DIALOG_ON_MSG_HOOKED(frame, msg, argStr, argNum)
@@ -664,26 +744,38 @@ function QUICKQUEST_SELECT_DIALOG_HOOKED()
 	end
 end
 
+function QUICKQUEST_CLOSE_REWARD_FROM_QUEST()
+	local frame = ui.GetFrame('questreward');
+	frame:ShowWindow(0);
+	control.DialogItemSelect(1);	
+	frame = frame:GetTopParentFrame();
+	frame:ShowWindow(0);
+end
+
 function QuickQuest.EnableOrDisableAddon(self)
 		
-	if self:IsAddonEnabled() == false then
-	
-		ACUtil.setupHook(DIALOGSELECT_ON_MSG_HOOKED,'DIALOGSELECT_ON_MSG');
-		ACUtil.setupHook(DIALOG_ON_MSG_HOOKED,'DIALOG_ON_MSG');
-		ACUtil.setupHook(MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED,'MAKE_BASIC_REWARD_ITEM_CTRL');
-		ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_HOOKED,'DIALOGSELECT_ITEM_ADD');	
-		
+	if self:IsAddonEnabled() == false then	
+		self:SetupEnabledHooks();
 		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] This addon has been enabled.', true, 'System', chatQuickQuestTextColor);
-	else
+	elseif self:IsAddonEnabled() == true then
 		ACUtil.setupHook(DIALOGSELECT_ON_MSG_DEFAULT,'DIALOGSELECT_ON_MSG');
 		ACUtil.setupHook(DIALOG_ON_MSG_DEFAULT,'DIALOG_ON_MSG');
 		ACUtil.setupHook(MAKE_BASIC_REWARD_ITEM_CTRL_DEFAULT,'MAKE_BASIC_REWARD_ITEM_CTRL');
 		ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_DEFAULT,'DIALOGSELECT_ITEM_ADD');
+		ACUtil.setupHook(MAKE_SELECT_REWARD_CTRL_DEFAULT,'MAKE_SELECT_REWARD_CTRL');
 		
 		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] This addon has been disabled.', true, 'System', chatQuickQuestTextColor);
 	end
 	
 	self:ChangeAddonEnableSettingsStatus();
+end
+
+function QuickQuest.SetupEnabledHooks()
+	ACUtil.setupHook(DIALOGSELECT_ON_MSG_HOOKED,'DIALOGSELECT_ON_MSG');
+	ACUtil.setupHook(DIALOG_ON_MSG_HOOKED,'DIALOG_ON_MSG');
+	ACUtil.setupHook(MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED,'MAKE_BASIC_REWARD_ITEM_CTRL');
+	ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_HOOKED,'DIALOGSELECT_ITEM_ADD');
+	ACUtil.setupHook(MAKE_SELECT_REWARD_CTRL_HOOKED,'MAKE_SELECT_REWARD_CTRL');	
 end
 
 function QuickQuest.IsAddonEnabled(self)
