@@ -157,7 +157,6 @@ function MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED(box, cls, y)
 		cancelBtn:ShowWindow(0);
 		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
         useBtn:SetOffset(0, 40);
-		control.DialogItemSelect(100);
 	else
 		cancelBtn:ShowWindow(1);
 		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
@@ -262,38 +261,27 @@ function MAKE_SELECT_REWARD_CTRL_HOOKED(box, y, questCls, callFunc)
         else
         	y = BOX_CREATE_RICHTEXT(box, "t_selreward", y, 20, ScpArgMsg("Auto_{@st41}BoSang_SeonTaeg"));
         end
-	
+		
+		local rewardCount = 0;
+		
     	for i = 1, MAX_QUEST_SELECTITEM do
     		local propName = "Success_SelectItemName" .. i;
     		local itemName = questCls[propName];
     		if itemName == "None" then
     			break;
     		end
-
+			
+			rewardCount = rewardCount + 1;
+			
     		local itemCnt = questCls[ "Success_SelectItemCount" .. i];
     		y = CREATE_QUEST_REWARE_CTRL(box, y, i, itemName, itemCnt, callFunc);
     	end
-    end
 		
-	local selectExist = 0;
-	local selected = 0;
-	local cnt = box:GetChildCount();
-	for i = 0 , cnt - 1 do
-		local ctrlSet = box:GetChildByIndex(i);
-		local name = ctrlSet:GetName();
-		if string.find(name, "REWARD_") ~= nil then
-			tolua.cast(ctrlSet, "ui::CControlSet");
-			if ctrlSet:IsSelected() == 1 then
-				selected = ctrlSet:GetValue();
-			end
-			selectExist = 1;
+		if rewardCount <= 1 then
+			ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.15);
 		end
-	end
-
-	if selectExist ~= 1 then
-		ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.15);
-	end
-
+    end
+	
 	return y;
 end
 

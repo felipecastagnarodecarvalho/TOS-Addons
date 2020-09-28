@@ -17,11 +17,11 @@
 		]
 	},
 	{
-		"tosversion" : "20200925",
+		"tosversion" : "20200928",
 		"name" : "Quick Quest",
 		"file" : "quickquest",
 		"extension" : "ipf",
-		"fileVersion" : "v1.3.0",
+		"fileVersion" : "v1.3.5",
 		"releaseTag" : "v1.3.0",
 		"unicode" : "😺",
 		"description" : "Skips most of dialogs, speeds up your in game questing routine.",
