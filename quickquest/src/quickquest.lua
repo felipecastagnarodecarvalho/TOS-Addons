@@ -426,195 +426,160 @@ function DIALOG_ON_MSG_DEFAULT(frame, msg, argStr, argNum)
 	end
 end
 
-function DIALOGSELECT_ON_MSG_HOOKED(frame, msg, argStr, argNum)
-	
-	frame:Invalidate();
-	frame:SetOffset(frame:GetX(),frame:GetY())
-	
-    if  msg == 'DIALOG_CHANGE_SELECT'  then
-		for i = 1, 11 do
-			local childName = 'item' .. i .. 'Btn'
-			local ItemBtn = frame:GetChild(childName);
-			ItemBtn:ShowWindow(0);
-		end
+function QUESTION_QUEST_WARP_HOOKED(frame, ctrl, argStr, questID)
+    
+    if session.colonywar.GetIsColonyWarMap() == true then
+        ui.SysMsg(ClMsg('ThisLocalUseNot'));
+        return 0;
+    end
 
-		local numberEdit = frame:GetChild('numberEdit');
-		local numberHelp = frame:GetChild('numberHelp');
-		numberHelp:ShowWindow(0);
-		numberEdit:ShowWindow(0);
+	if control.IsRestSit() == true then
+		ui.SysMsg(ClMsg('DontQuestWarpForSit'));
+		return;
+	end
 
-		DialogSelect_index = 0;
-		DialogSelect_count = 0;
+	if world.GetLayer() ~= 0 then
+		return;
+	end
 
-	elseif msg == 'DIALOG_NUMBER_RANGE' then
-		local numberHelp = frame:GetChild('numberHelp');
-		numberHelp:ShowWindow(1);
-		argStr = math.floor(argStr);
-		numberHelp:SetText(ScpArgMsg('Auto_ChoeSo_:_')..argStr..ScpArgMsg('Auto__ChoeDae_:_')..argNum);
-		local numberEdit = frame:GetChild('numberEdit');
-		tolua.cast(numberEdit, "ui::CEditControl");
-		numberEdit:SetText(argStr);
-		numberEdit:Resize(70, 40);
-		numberEdit:ShowWindow(1);
-		numberEdit:SetNumberMode(1);
-		numberEdit:AcquireFocus();
-		frame:Resize(400, 100);
-		DialogSelect_Type = 1;
-	elseif msg == 'DIALOG_TEXT_INPUT' then
-		local numberEdit = frame:GetChild('numberEdit');
-		tolua.cast(numberEdit, "ui::CEditControl");
-		numberEdit:ClearText();
-		numberEdit:Resize(360, 40);
-		numberEdit:ShowWindow(1);
-		numberEdit:SetNumberMode(0);
-		numberEdit:AcquireFocus();
-		frame:Resize(400, 100);
-		DialogSelect_Type = 2;
-		frame:SetOffset(frame:GetX(),math.floor(ui.GetSceneHeight()*0.7))
-		
-		local questreward = frame:GetChild('questreward');
-		if questreward ~= nil then
-    		questreward:ShowWindow(0)
-    	end
-	elseif  msg == 'DIALOG_ADD_SELECT'  then
-		DialogSelect_index = 1;
-				
-		DialogSelect_Type = 0;
-		DIALOGSELECT_ITEM_ADD(frame, msg, argStr, argNum);
+	local cls = GetClassList('Map');
+    local mapClassName = session.GetMapName();
 
-		local questRewardBox = frame:GetChild('questreward');
-		if questRewardBox ~= nil then
-			argNum = argNum - 1;
-		end
-		
-		DialogSelect_count = argNum;
+	local obj = GetClassByNameFromList(cls, mapClassName);
 
-		local ItemBtn = frame:GetChild('item1Btn');
-		local itemWidth = ItemBtn:GetWidth()
-		local x, y = GET_SCREEN_XY(ItemBtn,itemWidth/2.5);
-	
-		mouse.SetPos(x,y);		
-		mouse.SetHidable(0);
-	elseif  msg == 'DIALOG_CLOSE'  then
-		ui.CloseFrame(frame:GetName());
-		DialogSelect_index = 0;
-		DialogSelect_count = 0;
-		mouse.SetHidable(1);
+	if obj.Type == "MISSION" then
+		ui.SysMsg(ScpArgMsg("WarpQuestDisabled"));
+        return;
+	end
 
-	elseif msg == 'DIALOGSELECT_UP' then
-		DialogSelect_index = DialogSelect_index - 1;
-		if DialogSelect_index <= 0 then
-			DialogSelect_index = DialogSelect_count;
-		end
-		DIALOGSELECT_ITEM_SELECT(frame);
-
-	elseif msg == 'DIALOGSELECT_DOWN' then
-		DialogSelect_index = DialogSelect_index + 1;
-		if DialogSelect_index > DialogSelect_count then
-			DialogSelect_index = 1;
-		end
-		DIALOGSELECT_ITEM_SELECT(frame);
-
-	elseif msg == 'DIALOGSELECT_SELECT' then
-		if DialogSelect_index ~= 0 then
-			control.DialogSelect(DialogSelect_index);
+	local pc = GetMyPCObject();
+	if ctrl ~= nil then
+		local fid = ctrl:GetUserValue("PC_FID");
+		if fid ~= "None" then
+			local memberInfo = session.party.GetPartyMemberInfoByAID(PARTY_NORMAL, fid);
+			if memberInfo ~= nil then
+				local memberObj = GetIES(memberInfo:GetObject());
+				g_questCheckFunc = SCR_QUEST_CHECK;
+				local result = TryGetProp(memberObj, 'Shared_Progress');
+				local progressStr = quest.GetQuestStateString(result);
+				if progressStr == 'POSSIBLE' or progressStr == 'PROGRESS' or progressStr == 'SUCCESS' then					
+					g_questCheckFunc = nil;
+					local cheat = string.format("/reqpartyquest %s %d %s", fid, questID, memberInfo:GetName());
+					movie.QuestWarp(session.GetMyHandle(), cheat, 0);
+					packet.ClientDirect("QuestWarp");
+					return;
+				end			
+			end
 		end
 	end
+
+	local isMoveMap = 0;
+    local mapClassName = session.GetMapName();
+	local questIES = GetClassByType("QuestProgressCheck", questID);
+	local result = SCR_QUEST_CHECK_Q(pc, questIES.ClassName);
+	local questnpc_state = GET_QUEST_NPC_STATE(questIES, result, pc);
+
+    if mapClassName ~= questIES[questnpc_state..'Map'] then
+		isMoveMap = 1;
+    end
+
+	local cheat = string.format("/retquest %d", questID);
+	local mapName , x, y, z = GET_QUEST_RET_POS(pc, questIES)
+	if mapName ~= nil and 0 == isMoveMap then
+		gePreload.PreloadArea(x, y, z);
+	end
+
+	movie.QuestWarp(session.GetMyHandle(), cheat, isMoveMap);
+	packet.ClientDirect("QuestWarp");
 end
 
-function DIALOGSELECT_ON_MSG_DEFAULT(frame, msg, argStr, argNum)
-	frame:SetMargin(0, 0, 0, 300);
-	if  msg == 'DIALOG_CHANGE_SELECT' then
-		local itemBtnCount = GET_DIALOGSELECT_ITEMBTN_COUNT(frame);
-		for i = 1, itemBtnCount do
-			local childName = 'item' .. i .. 'Btn'
-			local ItemBtn = frame:GetChild(childName);
-			ItemBtn:ShowWindow(0);
-		end
+function QUESTION_QUEST_WARP_DEFAULT(frame, ctrl, argStr, questID)
+    
+    if session.colonywar.GetIsColonyWarMap() == true then
+        ui.SysMsg(ClMsg('ThisLocalUseNot'));
+        return 0;
+    end
 
-		local numberEdit = frame:GetChild('numberEdit');
-		local numberHelp = frame:GetChild('numberHelp');
-		numberHelp:ShowWindow(0);
-		numberEdit:ShowWindow(0);
+	if control.IsRestSit() == true then
+		ui.SysMsg(ClMsg('DontQuestWarpForSit'));
+		return;
+	end
 
-		DialogSelect_index = 0;
-		DialogSelect_count = 0;
-	elseif msg == 'DIALOG_NUMBER_RANGE' then
-		local numberHelp = frame:GetChild('numberHelp');
-		numberHelp:ShowWindow(1);
-		argStr = math.floor(argStr);
-		numberHelp:SetText(ScpArgMsg('Auto_ChoeSo_:_')..argStr..ScpArgMsg('Auto__ChoeDae_:_')..argNum);
-		local numberEdit = frame:GetChild('numberEdit');
-		tolua.cast(numberEdit, "ui::CEditControl");
-		numberEdit:SetText(argStr);
-		numberEdit:Resize(70, 40);
-		numberEdit:ShowWindow(1);
-		numberEdit:SetNumberMode(1);
-        numberEdit:SetMaxLen(16)
-		numberEdit:AcquireFocus();
-		frame:Resize(400, 100);
+	if world.GetLayer() ~= 0 then
+		return;
+	end
 
-		DialogSelect_Type = 1;
-	elseif msg == 'DIALOG_TEXT_INPUT' then
-		local numberEdit = frame:GetChild('numberEdit');
-		tolua.cast(numberEdit, "ui::CEditControl");
-		numberEdit:ClearText();
-		numberEdit:Resize(360, 40);
-		numberEdit:ShowWindow(1);
-		numberEdit:SetNumberMode(0);
-        numberEdit:SetMaxLen(32)
-		numberEdit:AcquireFocus();
-		frame:Resize(400, 100);
+	local cls = GetClassList('Map');
+    local mapClassName = session.GetMapName();
 
-		DialogSelect_Type = 2;
-		local questreward = frame:GetChild('questreward');
-		if questreward ~= nil then
-    		questreward:ShowWindow(0)
-    	end
-	elseif  msg == 'DIALOG_ADD_SELECT'  then
-		DialogSelect_Type = 0;
-		DIALOGSELECT_ITEM_ADD(frame, msg, argStr, argNum);
+	local obj = GetClassByNameFromList(cls, mapClassName);
 
-		local ItemBtn = frame:GetChild('item1Btn');
-		local itemWidth = ItemBtn:GetWidth();
-		local x, y = GET_SCREEN_XY(ItemBtn, itemWidth / 2.5);		
+	if obj.Type == "MISSION" then
+		ui.SysMsg(ScpArgMsg("WarpQuestDisabled"));
+        return;
+	end
 
-		local questRewardBox = frame:GetChild('questreward');
-		if questRewardBox ~= nil then
-			argNum = argNum - 1;
-			y = y - questRewardBox:GetY();
-		end
-		DialogSelect_count = argNum;
-		DialogSelect_index = 1;
-
-		mouse.SetPos(x,y);
-		mouse.SetHidable(0);
-	elseif  msg == 'DIALOG_CLOSE'  then
-		DIALOGSELECT_FIX_WIDTH(frame, 540);
-		frame:SetUserValue("QUESTFRAME_HEIGHT",  0);
-		frame:SetUserValue("FIRSTORDER_MAXHEIGHT", 0);
-		frame:SetUserValue("IsScroll", "NO");
-		ui.CloseFrame(frame:GetName());
-		DialogSelect_index = 0;
-		DialogSelect_count = 0;
-		mouse.SetHidable(1);	
-	elseif msg == 'DIALOGSELECT_UP' then
-		DialogSelect_index = DialogSelect_index - 1;
-		if DialogSelect_index <= 0 then
-			DialogSelect_index = DialogSelect_count;
-		end
-		DIALOGSELECT_ITEM_SELECT(frame);
-	elseif msg == 'DIALOGSELECT_DOWN' then
-		DialogSelect_index = DialogSelect_index + 1;
-		if DialogSelect_index > DialogSelect_count then
-			DialogSelect_index = 1;
-		end
-		DIALOGSELECT_ITEM_SELECT(frame);
-	elseif msg == 'DIALOGSELECT_SELECT' then
-		if DialogSelect_index ~= 0 then
-			control.DialogSelect(DialogSelect_index);
+	local questIES = GetClassByType("QuestProgressCheck", questID);
+	
+	local targetMapName = GET_QUEST_LOCATION(questIES)
+	local targetMapCls = GetClassByNameFromList(cls, targetMapName);
+	local questLevel = TryGetProp(targetMapCls, "QuestLevel");
+	if questLevel ~= nil then
+		 local level = info.GetLevel(session.GetMyHandle());
+		if argStr ~= 'NoChecWarp' and questLevel - level >= 30 then 
+			local frameName = ""
+			local ctrlName = ""
+			if frame ~= nil then
+				frameName = frame:GetName()
+			end
+			if ctrl ~= nil then
+				ctrlName = ctrl:GetName();
+			end
+			local yesscp = string.format('_QUESTION_QUEST_WARP("%s", "%s", "%d")', frameName, ctrlName, questID);
+		 	ui.MsgBox(ClMsg("ReallyWarpHighLevelZone"), yesscp, 'None');
+		 	return;
 		end
 	end
+
+	local pc = GetMyPCObject();
+	if ctrl ~= nil then
+		local fid = ctrl:GetUserValue("PC_FID");
+		if fid ~= "None" then
+			local memberInfo = session.party.GetPartyMemberInfoByAID(PARTY_NORMAL, fid);
+			if memberInfo ~= nil then
+				local memberObj = GetIES(memberInfo:GetObject());
+				g_questCheckFunc = SCR_QUEST_CHECK;
+				local result = TryGetProp(memberObj, 'Shared_Progress');
+				local progressStr = quest.GetQuestStateString(result);
+				if progressStr == 'POSSIBLE' or progressStr == 'PROGRESS' or progressStr == 'SUCCESS' then					
+					g_questCheckFunc = nil;
+					local cheat = string.format("/reqpartyquest %s %d %s", fid, questID, memberInfo:GetName());
+					movie.QuestWarp(session.GetMyHandle(), cheat, 0);
+					packet.ClientDirect("QuestWarp");
+					return;
+				end			
+			end
+		end
+	end
+
+	local isMoveMap = 0;
+    local mapClassName = session.GetMapName();
+	local questIES = GetClassByType("QuestProgressCheck", questID);
+	local result = SCR_QUEST_CHECK_Q(pc, questIES.ClassName);
+	local questnpc_state = GET_QUEST_NPC_STATE(questIES, result, pc);
+
+    if mapClassName ~= questIES[questnpc_state..'Map'] then
+		isMoveMap = 1;
+    end
+
+	local cheat = string.format("/retquest %d", questID);
+	local mapName , x, y, z = GET_QUEST_RET_POS(pc, questIES)
+	if mapName ~= nil and 0 == isMoveMap then
+		gePreload.PreloadArea(x, y, z);
+	end
+
+	movie.QuestWarp(session.GetMyHandle(), cheat, isMoveMap);
+	packet.ClientDirect("QuestWarp");
 end
 
 function DIALOGSELECT_ITEM_ADD_HOOKED(frame, msg, argStr, argNum)
@@ -782,7 +747,7 @@ function QuickQuest.EnableOrDisableAddon(self)
 		self:SetupEnabledHooks();
 		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] The addon has been enabled.', true, 'System', chatQuickQuestTextColor);
 	elseif self:IsAddonEnabled() == true then
-		ACUtil.setupHook(DIALOGSELECT_ON_MSG_DEFAULT,'DIALOGSELECT_ON_MSG');
+		ACUtil.setupHook(QUESTION_QUEST_WARP_DEFAULT,'QUESTION_QUEST_WARP');
 		ACUtil.setupHook(DIALOG_ON_MSG_DEFAULT,'DIALOG_ON_MSG');
 		ACUtil.setupHook(MAKE_BASIC_REWARD_ITEM_CTRL_DEFAULT,'MAKE_BASIC_REWARD_ITEM_CTRL');
 		ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_DEFAULT,'DIALOGSELECT_ITEM_ADD');
@@ -795,7 +760,7 @@ function QuickQuest.EnableOrDisableAddon(self)
 end
 
 function QuickQuest.SetupEnabledHooks()
-	ACUtil.setupHook(DIALOGSELECT_ON_MSG_HOOKED,'DIALOGSELECT_ON_MSG');
+	ACUtil.setupHook(QUESTION_QUEST_WARP_HOOKED,'QUESTION_QUEST_WARP');
 	ACUtil.setupHook(DIALOG_ON_MSG_HOOKED,'DIALOG_ON_MSG');
 	ACUtil.setupHook(MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED,'MAKE_BASIC_REWARD_ITEM_CTRL');
 	ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_HOOKED,'DIALOGSELECT_ITEM_ADD');
