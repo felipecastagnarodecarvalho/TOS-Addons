@@ -21,8 +21,8 @@
 		"name" : "Quick Quest",
 		"file" : "quickquest",
 		"extension" : "ipf",
-		"fileVersion" : "v1.2.0",
-		"releaseTag" : "v1.2.0",
+		"fileVersion" : "v1.3.0",
+		"releaseTag" : "v1.3.0",
 		"unicode" : "😺",
 		"description" : "Skips most of dialogs, speeds up your in game questing routine.",
 		"tags" : [

@@ -60,6 +60,62 @@ function QUICKQUEST_LOAD_SETTINGS()
 	
 end
 
+function QUICKQUEST_SELECT_DIALOG_HOOKED()
+    local frame = ui.GetFrame('dialog');
+	
+	local textObj = GET_CHILD(frame, "textlist", "ui::CFlowText");
+
+	local dialog_NewOpen = frame:GetUserIValue("DialogNewOpen");
+
+	if dialog_NewOpen == 0 then
+		if frame:IsVisible() == 1 then	
+			if textObj:IsFlowed() == 1 and textObj:IsNextPage() == 1 then
+				textObj:SetNextPage(0);
+				ReserveScript('QUICKQUEST_SELECT_DIALOG_HOOKED()', 0.05);
+			elseif textObj:IsFlowed() == 1 and textObj:IsNextPage() == 0 then
+				textObj:SetNextPage(1);
+				textObj:SetFlowSpeed(35);
+				DIALOG_TEXT_VOICE(textObj);
+				ReserveScript('QUICKQUEST_SELECT_DIALOG_HOOKED()', 0.05);				
+			else
+				local dialogType = frame:GetUserIValue("DialogType");
+				
+				if dialogType == 1 then
+					frame:Invalidate();
+					DIALOG_SEND_OK(frame);
+				elseif dialogType == 2 then
+					session.SetSelectDlgList();
+					ui.OpenFrame('dialogselect');
+				end
+			end
+		end
+	else
+		local illustFrame = ui.GetFrame('dialogillust');
+
+		frame:Invalidate();
+		frame:ShowWindow(0);
+		illustFrame:ShowWindow(0);
+
+		local dialog_NewOpenDuration = frame:GetUserValue("DialogNewOpenDuration");
+		if dialog_NewOpenDuration == "None" then
+			dialog_NewOpenDuration = 0;
+		else
+			dialog_NewOpenDuration = tonumber(dialog_NewOpenDuration);
+		end
+
+		frame:SetOpenDuration(dialog_NewOpenDuration);
+		illustFrame:SetOpenDuration(dialog_NewOpenDuration);
+	end
+end
+
+function QUICKQUEST_CLOSE_REWARD_FROM_QUEST()
+	local frame = ui.GetFrame('questreward');
+	frame:ShowWindow(0);
+	control.DialogItemSelect(1);	
+	frame = frame:GetTopParentFrame();
+	frame:ShowWindow(0);
+end
+
 function MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED(box, cls, y)
     local MySession		= session.GetMyHandle();
 	local MyJobNum		= info.GetJob(MySession);
@@ -69,6 +125,7 @@ function MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED(box, cls, y)
 	local pc = GetMyPCObject();
 
 	local isItem = 0;
+	
 	if cls.Success_ItemName1 ~= "None" or cls.Success_JobItem_Name1 ~= "None" then
 		for i = 1 , MAX_QUEST_TAKEITEM do
 			local propName = "Success_ItemName" .. i;
@@ -95,18 +152,37 @@ function MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED(box, cls, y)
 	local frame 	= ui.GetFrame('questreward');
 	local cancelBtn = frame:GetChild('CancelBtn');
 	local useBtn = frame:GetChild('UseBtn');
-
+		
 	if isItem == 0 then
 		cancelBtn:ShowWindow(0);
 		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
         useBtn:SetOffset(0, 40);
+		control.DialogItemSelect(100);
 	else
 		cancelBtn:ShowWindow(1);
 		useBtn:SetGravity(ui.CENTER_HORZ, ui.BOTTOM);
         useBtn:SetOffset(-85, 40);
-		control.DialogItemSelect(100);
-		ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.15);
 	end
+	
+	local selectExist = 0;
+	local selected = 0;
+	
+	local cnt = box:GetChildCount();
+	for i = 0 , cnt - 1 do
+		local ctrlSet = box:GetChildByIndex(i);
+		local name = ctrlSet:GetName();
+		if string.find(name, "REWARD_") ~= nil then
+			tolua.cast(ctrlSet, "ui::CControlSet");
+			if ctrlSet:IsSelected() == 1 then
+				selected = ctrlSet:GetValue();
+			end
+			selectExist = 1;
+		end
+	end
+
+	if selectExist ~= 1 then
+		ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.15);
+	end	
 
 	return y;
 end
@@ -186,26 +262,44 @@ function MAKE_SELECT_REWARD_CTRL_HOOKED(box, y, questCls, callFunc)
         else
         	y = BOX_CREATE_RICHTEXT(box, "t_selreward", y, 20, ScpArgMsg("Auto_{@st41}BoSang_SeonTaeg"));
         end
-    
+	
     	for i = 1, MAX_QUEST_SELECTITEM do
     		local propName = "Success_SelectItemName" .. i;
     		local itemName = questCls[propName];
     		if itemName == "None" then
     			break;
     		end
-    
+
     		local itemCnt = questCls[ "Success_SelectItemCount" .. i];
     		y = CREATE_QUEST_REWARE_CTRL(box, y, i, itemName, itemCnt, callFunc);
     	end
-					
-		ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.15);
     end
+		
+	local selectExist = 0;
+	local selected = 0;
+	local cnt = box:GetChildCount();
+	for i = 0 , cnt - 1 do
+		local ctrlSet = box:GetChildByIndex(i);
+		local name = ctrlSet:GetName();
+		if string.find(name, "REWARD_") ~= nil then
+			tolua.cast(ctrlSet, "ui::CControlSet");
+			if ctrlSet:IsSelected() == 1 then
+				selected = ctrlSet:GetValue();
+			end
+			selectExist = 1;
+		end
+	end
+
+	if selectExist ~= 1 then
+		ReserveScript('QUICKQUEST_CLOSE_REWARD_FROM_QUEST()', 0.15);
+	end
 
 	return y;
 end
 
 function MAKE_SELECT_REWARD_CTRL_DEFAULT(box, y, questCls, callFunc)
-    if questCls.Success_SelectItemName1 == "None" then
+    
+	if questCls.Success_SelectItemName1 == "None" then
 		return y;
 	end
 	
@@ -243,7 +337,6 @@ function MAKE_SELECT_REWARD_CTRL_DEFAULT(box, y, questCls, callFunc)
     end
 
 	return y;
-
 end
 
 function DIALOG_ON_MSG_HOOKED(frame, msg, argStr, argNum)
@@ -412,12 +505,8 @@ function DIALOGSELECT_ON_MSG_HOOKED(frame, msg, argStr, argNum)
 		local itemWidth = ItemBtn:GetWidth()
 		local x, y = GET_SCREEN_XY(ItemBtn,itemWidth/2.5);
 	
-		-- if session.config.IsMouseMode() == false then
-			mouse.SetPos(x,y);
-		-- end
-		
+		mouse.SetPos(x,y);		
 		mouse.SetHidable(0);
-
 	elseif  msg == 'DIALOG_CLOSE'  then
 		ui.CloseFrame(frame:GetName());
 		DialogSelect_index = 0;
@@ -505,8 +594,6 @@ function DIALOGSELECT_ON_MSG_DEFAULT(frame, msg, argStr, argNum)
 		local questRewardBox = frame:GetChild('questreward');
 		if questRewardBox ~= nil then
 			argNum = argNum - 1;
-			-- questreward가 있는 경우, DIALOGSELECT_ITEM_ADD 함수에서 버튼의 layout_gravity가 ui.TOP으로 바뀌면서
-			-- GET_SCRREN_XY의 반환 값에 questreward가 반영되어 계산됨.
 			y = y - questRewardBox:GetY();
 		end
 		DialogSelect_count = argNum;
@@ -699,62 +786,6 @@ function DIALOGSELECT_ITEM_ADD_DEFAULT(frame, msg, argStr, argNum)
 	end
 
 	frame:Update();
-end
-
-function QUICKQUEST_SELECT_DIALOG_HOOKED()
-    local frame = ui.GetFrame('dialog');
-	
-	local textObj = GET_CHILD(frame, "textlist", "ui::CFlowText");
-
-	local dialog_NewOpen = frame:GetUserIValue("DialogNewOpen");
-
-	if dialog_NewOpen == 0 then
-		if frame:IsVisible() == 1 then	
-			if textObj:IsFlowed() == 1 and textObj:IsNextPage() == 1 then
-				textObj:SetNextPage(0);
-				ReserveScript('QUICKQUEST_SELECT_DIALOG_HOOKED()', 0.05);
-			elseif textObj:IsFlowed() == 1 and textObj:IsNextPage() == 0 then
-				textObj:SetNextPage(1);
-				textObj:SetFlowSpeed(35);
-				DIALOG_TEXT_VOICE(textObj);
-				ReserveScript('QUICKQUEST_SELECT_DIALOG_HOOKED()', 0.05);				
-			else
-				local dialogType = frame:GetUserIValue("DialogType");
-				
-				if dialogType == 1 then
-					frame:Invalidate();
-					DIALOG_SEND_OK(frame);
-				elseif dialogType == 2 then
-					session.SetSelectDlgList();
-					ui.OpenFrame('dialogselect');
-				end
-			end
-		end
-	else
-		local illustFrame = ui.GetFrame('dialogillust');
-
-		frame:Invalidate();
-		frame:ShowWindow(0);
-		illustFrame:ShowWindow(0);
-
-		local dialog_NewOpenDuration = frame:GetUserValue("DialogNewOpenDuration");
-		if dialog_NewOpenDuration == "None" then
-			dialog_NewOpenDuration = 0;
-		else
-			dialog_NewOpenDuration = tonumber(dialog_NewOpenDuration);
-		end
-
-		frame:SetOpenDuration(dialog_NewOpenDuration);
-		illustFrame:SetOpenDuration(dialog_NewOpenDuration);
-	end
-end
-
-function QUICKQUEST_CLOSE_REWARD_FROM_QUEST()
-	local frame = ui.GetFrame('questreward');
-	frame:ShowWindow(0);
-	control.DialogItemSelect(1);	
-	frame = frame:GetTopParentFrame();
-	frame:ShowWindow(0);
 end
 
 function QuickQuest.EnableOrDisableAddon(self)
