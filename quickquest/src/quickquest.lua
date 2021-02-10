@@ -18,7 +18,7 @@ local ACUtil = require('acutil');
 QuickQuest.SettingsFileLoc = string.format('../addons/%s/settings.json', addonNameLower);
 
 QuickQuest.DefaultSettings = {}
-QuickQuest.DefaultSettings.AddonEnabled = false;
+QuickQuest.DefaultSettings.AddonEnabled = true;
 
 local chatQuickQuestTextColor = '7733ff';
 
@@ -28,8 +28,7 @@ function QUICKQUEST_ON_INIT(addon, frame)
 	QuickQuest.Addon = addon;
 
     ACUtil.slashCommand('/quickquest', QUICKQUEST_ENABLE_OR_DISABLE);
-	ACUtil.slashCommand('/qq', QUICKQUEST_ENABLE_OR_DISABLE);
-	
+
 	QUICKQUEST_LOAD_SETTINGS();
 
 	if QuickQuest:IsAddonEnabled() == true then
