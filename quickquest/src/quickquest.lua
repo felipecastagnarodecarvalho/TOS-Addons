@@ -6,7 +6,7 @@ local author = 'TheReturn'
 local authorUpper = string.upper(author);
 local authorLower = string.lower(author);
 
-local version = '1.1.0';
+local version = '1.4.0';
 
 _G['ADDONS'] = _G['ADDONS'] or {}
 _G['ADDONS'][authorUpper] = _G['ADDONS'][authorUpper] or {}
@@ -14,7 +14,6 @@ _G['ADDONS'][authorUpper][addonNameUpper] = _G['ADDONS'][authorUpper][addonNameU
 local QuickQuest = _G['ADDONS'][authorUpper][addonNameUpper];
 
 local ACUtil = require('acutil');
-local CharbonAPI = require('charbonapi');
 
 QuickQuest.SettingsFileLoc = string.format('../addons/%s/settings.json', addonNameLower);
 
@@ -47,7 +46,7 @@ function QUICKQUEST_LOAD_SETTINGS()
 	if not QuickQuest.Loaded then	
 		QuickQuest:LoadSettings()
 		QuickQuest:SaveSettings()		
-		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] /quickquest or /qq to enable or disable quick quest addon.', true, 'System', chatQuickQuestTextColor);
+		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] type /quickquest or /qq to enable or disable quick quest addon.', true, 'System', chatQuickQuestTextColor);
 		
 		if QuickQuest:IsAddonEnabled() == true then
 			session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] The QuickQuest addon is ENABLED.', true, 'System', chatQuickQuestTextColor);
@@ -426,162 +425,6 @@ function DIALOG_ON_MSG_DEFAULT(frame, msg, argStr, argNum)
 	end
 end
 
-function QUESTION_QUEST_WARP_HOOKED(frame, ctrl, argStr, questID)
-    
-    if session.colonywar.GetIsColonyWarMap() == true then
-        ui.SysMsg(ClMsg('ThisLocalUseNot'));
-        return 0;
-    end
-
-	if control.IsRestSit() == true then
-		ui.SysMsg(ClMsg('DontQuestWarpForSit'));
-		return;
-	end
-
-	if world.GetLayer() ~= 0 then
-		return;
-	end
-
-	local cls = GetClassList('Map');
-    local mapClassName = session.GetMapName();
-
-	local obj = GetClassByNameFromList(cls, mapClassName);
-
-	if obj.Type == "MISSION" then
-		ui.SysMsg(ScpArgMsg("WarpQuestDisabled"));
-        return;
-	end
-
-	local pc = GetMyPCObject();
-	if ctrl ~= nil then
-		local fid = ctrl:GetUserValue("PC_FID");
-		if fid ~= "None" then
-			local memberInfo = session.party.GetPartyMemberInfoByAID(PARTY_NORMAL, fid);
-			if memberInfo ~= nil then
-				local memberObj = GetIES(memberInfo:GetObject());
-				g_questCheckFunc = SCR_QUEST_CHECK;
-				local result = TryGetProp(memberObj, 'Shared_Progress');
-				local progressStr = quest.GetQuestStateString(result);
-				if progressStr == 'POSSIBLE' or progressStr == 'PROGRESS' or progressStr == 'SUCCESS' then					
-					g_questCheckFunc = nil;
-					local cheat = string.format("/reqpartyquest %s %d %s", fid, questID, memberInfo:GetName());
-					movie.QuestWarp(session.GetMyHandle(), cheat, 0);
-					packet.ClientDirect("QuestWarp");
-					return;
-				end			
-			end
-		end
-	end
-
-	local isMoveMap = 0;
-    local mapClassName = session.GetMapName();
-	local questIES = GetClassByType("QuestProgressCheck", questID);
-	local result = SCR_QUEST_CHECK_Q(pc, questIES.ClassName);
-	local questnpc_state = GET_QUEST_NPC_STATE(questIES, result, pc);
-
-    if mapClassName ~= questIES[questnpc_state..'Map'] then
-		isMoveMap = 1;
-    end
-
-	local cheat = string.format("/retquest %d", questID);
-	local mapName , x, y, z = GET_QUEST_RET_POS(pc, questIES)
-	if mapName ~= nil and 0 == isMoveMap then
-		gePreload.PreloadArea(x, y, z);
-	end
-
-	movie.QuestWarp(session.GetMyHandle(), cheat, isMoveMap);
-	packet.ClientDirect("QuestWarp");
-end
-
-function QUESTION_QUEST_WARP_DEFAULT(frame, ctrl, argStr, questID)
-    
-    if session.colonywar.GetIsColonyWarMap() == true then
-        ui.SysMsg(ClMsg('ThisLocalUseNot'));
-        return 0;
-    end
-
-	if control.IsRestSit() == true then
-		ui.SysMsg(ClMsg('DontQuestWarpForSit'));
-		return;
-	end
-
-	if world.GetLayer() ~= 0 then
-		return;
-	end
-
-	local cls = GetClassList('Map');
-    local mapClassName = session.GetMapName();
-
-	local obj = GetClassByNameFromList(cls, mapClassName);
-
-	if obj.Type == "MISSION" then
-		ui.SysMsg(ScpArgMsg("WarpQuestDisabled"));
-        return;
-	end
-
-	local questIES = GetClassByType("QuestProgressCheck", questID);
-	
-	local targetMapName = GET_QUEST_LOCATION(questIES)
-	local targetMapCls = GetClassByNameFromList(cls, targetMapName);
-	local questLevel = TryGetProp(targetMapCls, "QuestLevel");
-	if questLevel ~= nil then
-		 local level = info.GetLevel(session.GetMyHandle());
-		if argStr ~= 'NoChecWarp' and questLevel - level >= 30 then 
-			local frameName = ""
-			local ctrlName = ""
-			if frame ~= nil then
-				frameName = frame:GetName()
-			end
-			if ctrl ~= nil then
-				ctrlName = ctrl:GetName();
-			end
-			local yesscp = string.format('_QUESTION_QUEST_WARP("%s", "%s", "%d")', frameName, ctrlName, questID);
-		 	ui.MsgBox(ClMsg("ReallyWarpHighLevelZone"), yesscp, 'None');
-		 	return;
-		end
-	end
-
-	local pc = GetMyPCObject();
-	if ctrl ~= nil then
-		local fid = ctrl:GetUserValue("PC_FID");
-		if fid ~= "None" then
-			local memberInfo = session.party.GetPartyMemberInfoByAID(PARTY_NORMAL, fid);
-			if memberInfo ~= nil then
-				local memberObj = GetIES(memberInfo:GetObject());
-				g_questCheckFunc = SCR_QUEST_CHECK;
-				local result = TryGetProp(memberObj, 'Shared_Progress');
-				local progressStr = quest.GetQuestStateString(result);
-				if progressStr == 'POSSIBLE' or progressStr == 'PROGRESS' or progressStr == 'SUCCESS' then					
-					g_questCheckFunc = nil;
-					local cheat = string.format("/reqpartyquest %s %d %s", fid, questID, memberInfo:GetName());
-					movie.QuestWarp(session.GetMyHandle(), cheat, 0);
-					packet.ClientDirect("QuestWarp");
-					return;
-				end			
-			end
-		end
-	end
-
-	local isMoveMap = 0;
-    local mapClassName = session.GetMapName();
-	local questIES = GetClassByType("QuestProgressCheck", questID);
-	local result = SCR_QUEST_CHECK_Q(pc, questIES.ClassName);
-	local questnpc_state = GET_QUEST_NPC_STATE(questIES, result, pc);
-
-    if mapClassName ~= questIES[questnpc_state..'Map'] then
-		isMoveMap = 1;
-    end
-
-	local cheat = string.format("/retquest %d", questID);
-	local mapName , x, y, z = GET_QUEST_RET_POS(pc, questIES)
-	if mapName ~= nil and 0 == isMoveMap then
-		gePreload.PreloadArea(x, y, z);
-	end
-
-	movie.QuestWarp(session.GetMyHandle(), cheat, isMoveMap);
-	packet.ClientDirect("QuestWarp");
-end
-
 function DIALOGSELECT_ITEM_ADD_HOOKED(frame, msg, argStr, argNum)
 	
 	if argNum == 1 then
@@ -743,16 +586,11 @@ end
 
 function QuickQuest.EnableOrDisableAddon(self)
 		
-	if self:IsAddonEnabled() == false then	
+	if self:IsAddonEnabled() == true then	
 		self:SetupEnabledHooks();
 		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] The addon has been enabled.', true, 'System', chatQuickQuestTextColor);
-	elseif self:IsAddonEnabled() == true then
-		ACUtil.setupHook(QUESTION_QUEST_WARP_DEFAULT,'QUESTION_QUEST_WARP');
-		ACUtil.setupHook(DIALOG_ON_MSG_DEFAULT,'DIALOG_ON_MSG');
-		ACUtil.setupHook(MAKE_BASIC_REWARD_ITEM_CTRL_DEFAULT,'MAKE_BASIC_REWARD_ITEM_CTRL');
-		ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_DEFAULT,'DIALOGSELECT_ITEM_ADD');
-		ACUtil.setupHook(MAKE_SELECT_REWARD_CTRL_DEFAULT,'MAKE_SELECT_REWARD_CTRL');
-		
+	elseif self:IsAddonEnabled() == false then
+		self:SetupDisabledHooks();		
 		session.ui.GetChatMsg():AddSystemMsg('[QuickQuest] The addon has been disabled.', true, 'System', chatQuickQuestTextColor);
 	end
 	
@@ -760,11 +598,17 @@ function QuickQuest.EnableOrDisableAddon(self)
 end
 
 function QuickQuest.SetupEnabledHooks()
-	ACUtil.setupHook(QUESTION_QUEST_WARP_HOOKED,'QUESTION_QUEST_WARP');
 	ACUtil.setupHook(DIALOG_ON_MSG_HOOKED,'DIALOG_ON_MSG');
 	ACUtil.setupHook(MAKE_BASIC_REWARD_ITEM_CTRL_HOOKED,'MAKE_BASIC_REWARD_ITEM_CTRL');
 	ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_HOOKED,'DIALOGSELECT_ITEM_ADD');
 	ACUtil.setupHook(MAKE_SELECT_REWARD_CTRL_HOOKED,'MAKE_SELECT_REWARD_CTRL');	
+end
+
+function QuickQuest.SetupDisabledHooks()
+	ACUtil.setupHook(DIALOG_ON_MSG_DEFAULT,'DIALOG_ON_MSG');
+	ACUtil.setupHook(MAKE_BASIC_REWARD_ITEM_CTRL_DEFAULT,'MAKE_BASIC_REWARD_ITEM_CTRL');
+	ACUtil.setupHook(DIALOGSELECT_ITEM_ADD_DEFAULT,'DIALOGSELECT_ITEM_ADD');
+	ACUtil.setupHook(MAKE_SELECT_REWARD_CTRL_DEFAULT,'MAKE_SELECT_REWARD_CTRL');
 end
 
 function QuickQuest.IsAddonEnabled(self)
